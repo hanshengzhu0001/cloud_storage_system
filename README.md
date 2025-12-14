@@ -1,6 +1,9 @@
 # Distributed Banking System Platform
 
-A high-performance, distributed banking system built in C++ featuring TCP/IP client-server architecture, lock-free queues, concurrency control, and AI-powered fraud detection. Designed for low-latency, high-throughput transaction processing.
+Built a distributed, TCP/IP client-server system (transfer, merges, payments) with lock-free queues and concurrency control.
+Added PostgreSQL persistence, AI fraud detection, CI pipelines (YAML) for resiliency and low-latency under high throughput.
+
+A high-performance, distributed banking system built in C++ featuring TCP/IP client-server architecture, lock-free queues, concurrency control, and AI-powered fraud detection. Designed for low-latency, high-throughput transaction processing with PostgreSQL persistence for enterprise-grade reliability.
 
 ## Architecture Overview
 
@@ -66,29 +69,106 @@ banking_system/
 - C++17 compatible compiler (GCC 7+, Clang 5+, MSVC 2017+)
 - CMake 3.16+
 - Google Test (optional, for tests)
+- **PostgreSQL** (optional, for persistent storage)
+  - `libpq-dev` (Ubuntu/Debian) or `libpq` (macOS)
+  - PostgreSQL server running locally or remotely
 
 ### Build Instructions
 
 ```bash
-# Clone and build
+# Clone and build (with PostgreSQL support)
 mkdir build && cd build
-cmake ..
+cmake ..  # PostgreSQL enabled by default
 make -j$(nproc)
 
-# Run server
+# Or build without PostgreSQL
+cmake -DUSE_POSTGRESQL=OFF ..
+make -j$(nproc)
+
+# Run server (in-memory mode)
 ./banking_server [port] [workers] [analysis_window]
+
+# Run server (with PostgreSQL persistence)
+./banking_server [port] [workers] [analysis_window] [db_host] [db_port] [db_name] [db_user] [db_pass]
 
 # Run client (in another terminal)
 ./banking_client [host] [port]
 ```
 
+### PostgreSQL Setup
+
+#### Automatic Setup (Recommended)
+```bash
+# Run the automated setup script
+./database/setup_postgres.sh
+
+# Customize with environment variables
+export DB_NAME=my_banking_db
+export DB_USERNAME=my_user
+export DB_PASSWORD=my_secure_password
+./database/setup_postgres.sh
+```
+
+#### Docker PostgreSQL (Development)
+```bash
+# Start PostgreSQL in Docker
+docker run -d --name postgres-banking \
+  -e POSTGRES_DB=banking_system \
+  -e POSTGRES_USER=banking_user \
+  -e POSTGRES_PASSWORD=secure_password \
+  -p 5432:5432 postgres:13
+
+# Run setup script
+export DB_PASSWORD=secure_password
+./database/setup_postgres.sh
+```
+
+### Database Architecture
+
+The system supports two storage modes:
+
+#### **In-Memory Mode (Default)**
+- ⚡ Ultra-fast performance with direct memory access
+- 🔄 ACID-compliant operations
+- 📊 Perfect for development and high-throughput scenarios
+- 💾 Data persists only during runtime
+
+#### **PostgreSQL Persistence Mode**
+- 🗄️ **Full ACID compliance** with durable storage
+- 📈 **Historical analytics** with time-travel queries
+- 🔍 **Advanced reporting** with SQL aggregation
+- 📊 **Audit trails** with complete transaction history
+- 🔄 **Crash recovery** with automatic data restoration
+- 📈 **Scalability** support for multiple instances
+
+#### **Database Schema Features**
+- **Account Management**: Balance tracking with creation timestamps
+- **Transaction Ledger**: Immutable audit trail with full history
+- **Scheduled Payments**: Automated recurring payment system
+- **Account Merging**: Historical balance reconstruction
+- **Fraud Detection**: AI alert storage with risk scoring
+- **System Monitoring**: Comprehensive logging and metrics
+
 ### Example Usage
 
+#### In-Memory Mode (Default)
 ```bash
 # Start server on port 8080 with 4 worker threads
 ./banking_server 8080 4 3600
 
 # Connect client to localhost:8080
+./banking_client localhost 8080
+```
+
+#### PostgreSQL Persistence Mode
+```bash
+# Setup database first
+./database/setup_postgres.sh
+
+# Start server with database persistence
+./banking_server 8080 4 3600 localhost 5432 banking_system banking_user secure_password
+
+# Client connection remains the same
 ./banking_client localhost 8080
 ```
 

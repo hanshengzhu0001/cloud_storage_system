@@ -11,9 +11,16 @@ namespace banking {
 
 BankingServer::BankingServer(int port, size_t num_worker_threads, size_t analysis_window_seconds)
     : port_(port) {
-  // Initialize components
+  // Initialize components with default in-memory system
   auto banking_impl = std::make_unique<BankingSystemImpl>();
   banking_system_ = std::make_unique<BankingSystemThreadSafe>(std::move(banking_impl));
+}
+
+BankingServer::BankingServer(int port, size_t num_worker_threads, size_t analysis_window_seconds,
+                           std::unique_ptr<BankingSystem> banking_system)
+    : port_(port), banking_system_(std::move(banking_system)) {
+  // Banking system is provided externally (e.g., persistent version)
+}
 
   transaction_processor_ = std::make_unique<concurrent::TransactionProcessor>(
       banking_system_.get(), num_worker_threads);

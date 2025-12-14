@@ -1,4 +1,5 @@
 #include "include/banking_server.hpp"
+#include "include/banking_system_persistent.hpp"
 
 #include <iostream>
 #include <csignal>
@@ -16,15 +17,28 @@ int main(int argc, char* argv[]) {
   size_t num_workers = 4;
   size_t analysis_window = 3600;  // 1 hour
 
+  // Database configuration (optional)
+  std::string db_host = "localhost";
+  int db_port = 5432;
+  std::string db_name = "banking_system";
+  std::string db_username = "banking_user";
+  std::string db_password = "";
+
   // Parse command line arguments
   if (argc >= 2) port = std::stoi(argv[1]);
   if (argc >= 3) num_workers = std::stoul(argv[2]);
   if (argc >= 4) analysis_window = std::stoul(argv[3]);
+  if (argc >= 5) db_host = argv[4];
+  if (argc >= 6) db_port = std::stoi(argv[5]);
+  if (argc >= 7) db_name = argv[6];
+  if (argc >= 8) db_username = argv[7];
+  if (argc >= 9) db_password = argv[8];
 
   std::cout << "=== Distributed Banking System Server ===" << std::endl;
   std::cout << "Port: " << port << std::endl;
   std::cout << "Worker threads: " << num_workers << std::endl;
   std::cout << "Fraud analysis window: " << analysis_window << " seconds" << std::endl;
+  std::cout << "Database: " << db_username << "@" << db_host << ":" << db_port << "/" << db_name << std::endl;
   std::cout << "==========================================" << std::endl;
 
   // Set up signal handling
@@ -32,9 +46,36 @@ int main(int argc, char* argv[]) {
   signal(SIGTERM, signalHandler);
 
   try {
-    banking::BankingServer server(port, num_workers, analysis_window);
+    // Determine if we should use persistent storage
+    bool use_database = !db_host.empty() && !db_username.empty();
 
-    if (!server.start()) {
+    std::unique_ptr<banking::BankingServer> server;
+
+    if (use_database) {
+      // Use persistent banking system with PostgreSQL
+      banking::BankingSystemPersistent::Config db_config{
+        db_host, db_port, db_name, db_username, db_password
+      };
+
+      std::cout << "Initializing with PostgreSQL persistence..." << std::endl;
+      auto persistent_system = std::make_unique<banking::BankingSystemPersistent>(db_config);
+
+      if (!persistent_system->initialize()) {
+        std::cerr << "Failed to initialize persistent banking system" << std::endl;
+        return 1;
+      }
+
+      // Wrap persistent system in thread-safe wrapper
+      auto thread_safe_system = std::make_unique<banking::BankingSystemThreadSafe>(std::move(persistent_system));
+      server = std::make_unique<banking::BankingServer>(port, num_workers, analysis_window,
+                                                       std::move(thread_safe_system));
+    } else {
+      // Use in-memory system only
+      std::cout << "Initializing with in-memory storage only..." << std::endl;
+      server = std::make_unique<banking::BankingServer>(port, num_workers, analysis_window);
+    }
+
+    if (!server->start()) {
       std::cerr << "Failed to start banking server" << std::endl;
       return 1;
     }

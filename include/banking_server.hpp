@@ -21,6 +21,11 @@ class BankingServer {
   BankingServer(int port,
                 size_t num_worker_threads = 4,
                 size_t analysis_window_seconds = 3600);
+
+  BankingServer(int port,
+                size_t num_worker_threads,
+                size_t analysis_window_seconds,
+                std::unique_ptr<BankingSystem> banking_system);
   ~BankingServer();
 
   // Non-copyable

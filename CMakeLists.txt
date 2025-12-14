@@ -14,6 +14,17 @@ endif()
 
 # Find required packages
 find_package(Threads REQUIRED)
+find_package(PostgreSQL QUIET)
+
+# PostgreSQL support
+option(USE_POSTGRESQL "Enable PostgreSQL database integration" ON)
+
+if(USE_POSTGRESQL)
+    if(NOT PostgreSQL_FOUND)
+        message(FATAL_ERROR "PostgreSQL not found. Install libpq-dev or disable with -DUSE_POSTGRESQL=OFF")
+    endif()
+    add_definitions(-DUSE_POSTGRESQL)
+endif()
 
 # Include directories
 include_directories(include)
@@ -43,9 +54,15 @@ set(OBSERVABILITY_SOURCES
     observability/logger.cpp
 )
 
+set(DATABASE_SOURCES
+    database/postgres_connection.cpp
+    database/banking_persistence.cpp
+)
+
 set(BANKING_SOURCES
     banking_core_impl.cpp
     banking_system_thread_safe.cpp
+    banking_system_persistent.cpp
     banking_server.cpp
 )
 
@@ -62,8 +79,18 @@ target_link_libraries(ai Threads::Threads)
 add_library(observability ${OBSERVABILITY_SOURCES})
 target_link_libraries(observability Threads::Threads)
 
+add_library(database ${DATABASE_SOURCES})
+target_link_libraries(database Threads::Threads)
+if(USE_POSTGRESQL)
+    target_link_libraries(database PostgreSQL::PostgreSQL)
+endif()
+
 add_library(banking ${BANKING_SOURCES})
 target_link_libraries(banking network concurrent ai observability Threads::Threads)
+
+if(USE_POSTGRESQL)
+    target_link_libraries(banking PostgreSQL::PostgreSQL)
+endif()
 
 # Main server executable
 add_executable(banking_server main_server.cpp)
