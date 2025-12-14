@@ -1,0 +1,59 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+bin/
+lib/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Logs
+*.log
+logs/
+
+# Test artifacts
+test-results.xml
+coverage.info
+*.gcda
+*.gcno
+*.gcov
+
+# Docker
+.dockerignore
+
+# Jenkins artifacts
+jenkins-job-config.xml
+
+# Build artifacts
+*.o
+*.so
+*.dylib
+*.dll
+*.exe
+*.a
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+
+# Temporary directories
+tmp/
+temp/

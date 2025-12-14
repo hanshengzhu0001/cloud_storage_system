@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  banking-server:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - BUILD_TYPE=Release
+      - NUM_WORKERS=4
+      - ANALYSIS_WINDOW=3600
+    command: ["./banking_server", "8080", "4", "3600"]
+    healthcheck:
+      test: ["CMD", "./banking_client", "localhost", "8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - banking-network
+
+  banking-client:
+    build: .
+    depends_on:
+      banking-server:
+        condition: service_healthy
+    command: ["./banking_client", "banking-server", "8080"]
+    networks:
+      - banking-network
+    profiles:
+      - client
+
+  # Monitoring stack (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - banking-network
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - banking-network
+    profiles:
+      - monitoring
+
+networks:
+  banking-network:
+    driver: bridge
+
+volumes:
+  grafana_data:
+
+# Usage:
+# Start server only: docker-compose up banking-server
+# Start with client: docker-compose --profile client up
+# Start monitoring: docker-compose --profile monitoring up
+# Start everything: docker-compose --profile client --profile monitoring up
